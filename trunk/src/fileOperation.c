@@ -48,6 +48,7 @@ void getExtension(char *fileName, char *extension, int extMaxLength){
 int check(struct homebrew *HBlist, char* dir,int HBfound){
     static SceIoDirent oneDir;
     char fullName[262];
+	char cur_cat[262];
     SceIoStat stats;
     int oDir = sceIoDopen(dir);
     if (oDir < 0){
@@ -71,7 +72,7 @@ int check(struct homebrew *HBlist, char* dir,int HBfound){
 			//__SCE__ - %__SCE__ style
             int j;
             char check150[8] = "";
-            strncpy(check150, oneDir.d_name, 8);
+            strncpy(check150, oneDir.d_name, 7);
             if (!stricmp(check150, "__SCE__"))
                 continue;
 			//folder - folder% style
@@ -88,15 +89,17 @@ int check(struct homebrew *HBlist, char* dir,int HBfound){
             old_format_style[0]='\0';
             //check CAT_ :
             char checkCAT_[5] = "";
-            strncpy(checkCAT_, oneDir.d_name, 5);
+            strncpy(checkCAT_, oneDir.d_name, 4);
             if (!stricmp(checkCAT_, "CAT_")) {
                 sceIoGetstat(fullName, &stats);
-                strcpy(CATlist[CATfound].name, oneDir.d_name);
+                strcpy(CATlist[CATfound].name, oneDir.d_name+4);
+				strcpy(cur_cat, CATlist[CATfound].name);
                 strcpy(CATlist[CATfound].path, fullName);
                 CATlist[CATfound].dateModify = stats.st_mtime;
                 sprintf(CATlist[CATfound].dateForSort, "%4.4i%2.2i%2.2i%2.2i%2.2i%2.2i%6.6i", stats.st_mtime.year, stats.st_mtime.month, stats.st_mtime.day, stats.st_mtime.hour, stats.st_mtime.minute, stats.st_mtime.second, stats.st_mtime.microsecond);
                 CATfound++;
                 HBfound=check(HBlist,fullName,HBfound);
+                strcpy(cur_cat, "Uncategorized");
                 continue;
             }
             if(isHomeBrew(fullName)){
@@ -106,6 +109,7 @@ int check(struct homebrew *HBlist, char* dir,int HBfound){
                 HBlist[HBfound].dateModify = stats.st_mtime;
                 sprintf(HBlist[HBfound].dateForSort, "%4.4i%2.2i%2.2i%2.2i%2.2i%2.2i%6.6i", stats.st_mtime.year, stats.st_mtime.month, stats.st_mtime.day, stats.st_mtime.hour, stats.st_mtime.minute, stats.st_mtime.second, stats.st_mtime.microsecond);
                 HBlist[HBfound].type=0;
+                strcpy(HBlist[HBfound].category, cur_cat);
                 HBfound++;
             }
         } else if (FIO_S_ISREG(oneDir.d_stat.st_mode)){
