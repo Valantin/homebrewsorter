@@ -52,11 +52,24 @@ int check(struct homebrew *HBlist, char* dir,int HBfound){
             //Directory (HB):
         if (FIO_S_ISDIR(oneDir.d_stat.st_mode)){
             //Check for 1.50 hb:
+			//__SCE__ - %__SCE__ style
             int j;
             char check150[8] = "";
             strncpy(check150, oneDir.d_name, 8);
             if (!stricmp(check150, "__SCE__"))
                 continue;
+			//folder - folder% style
+            int uDir;
+            char old_format_style[262];
+            strcpy(old_format_style, fullName);
+            strcat(old_format_style, "%");
+            uDir = sceIoDopen(old_format_style);
+            if (!( uDir < 0)){//if there's a folder% for current folder, skip this one as it holds data.psp named eboot.pbp and doesn't need sorting.
+                sceIoDclose(uDir);
+                old_format_style[0]='\0';
+                continue;
+            }
+            old_format_style[0]='\0';
             //check CAT_ :
             char checkCAT_[5] = "";
             strncpy(checkCAT_, oneDir.d_name, 5);
