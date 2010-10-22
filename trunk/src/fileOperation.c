@@ -12,6 +12,22 @@
 static short int CATfound=0;
 static struct categories CATlist[MAX_CAT];
 
+/** Controlla che ci sia Un eboot.pbp
+    \param *path
+        Indirizzo nel quale controllare la presenza dell'eboot.pbp
+*/
+int isHomeBrew(char *path) {
+    char file[262];
+    if (path[strlen(path)-1] != '/')
+        sprintf(file, "%s/%s", path, "eboot.pbp");
+    else
+        sprintf(file, "%s%s", path, "eboot.pbp");
+    SceIoStat stat;
+    memset(&stat, 0, sizeof(stat));
+    if (sceIoGetstat(file, &stat) < 0) return 0;
+    else return 1;
+}
+
 void getExtension(char *fileName, char *extension, int extMaxLength){
     int i = 0, j = 0, count = 0;
     for (i = strlen(fileName) - 1; i >= 0; i--){
@@ -83,13 +99,15 @@ int check(struct homebrew *HBlist, char* dir,int HBfound){
                 HBfound=check(HBlist,fullName,HBfound);
                 continue;
             }
-            sceIoGetstat(fullName, &stats);
-            strcpy(HBlist[HBfound].name, oneDir.d_name);
-            strcpy(HBlist[HBfound].path, fullName);
-            HBlist[HBfound].dateModify = stats.st_mtime;
-            sprintf(HBlist[HBfound].dateForSort, "%4.4i%2.2i%2.2i%2.2i%2.2i%2.2i%6.6i", stats.st_mtime.year, stats.st_mtime.month, stats.st_mtime.day, stats.st_mtime.hour, stats.st_mtime.minute, stats.st_mtime.second, stats.st_mtime.microsecond);
-            HBlist[HBfound].type=0;
-            HBfound++;
+            if(isHomeBrew(fullName)){
+                sceIoGetstat(fullName, &stats);
+                strcpy(HBlist[HBfound].name, oneDir.d_name);
+                strcpy(HBlist[HBfound].path, fullName);
+                HBlist[HBfound].dateModify = stats.st_mtime;
+                sprintf(HBlist[HBfound].dateForSort, "%4.4i%2.2i%2.2i%2.2i%2.2i%2.2i%6.6i", stats.st_mtime.year, stats.st_mtime.month, stats.st_mtime.day, stats.st_mtime.hour, stats.st_mtime.minute, stats.st_mtime.second, stats.st_mtime.microsecond);
+                HBlist[HBfound].type=0;
+                HBfound++;
+            }
         } else if (FIO_S_ISREG(oneDir.d_stat.st_mode)){
             char ext[4];
             getExtension(fullName, ext, 3);
