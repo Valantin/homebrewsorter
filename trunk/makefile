@@ -1,5 +1,5 @@
 TARGET = homebrewSorter
-OBJS = src/fileOperation.o src/main.o
+OBJS = src/dirOperation.o src/fileOperation.o src/main.o
 
 #To build for custom firmware:
 BUILD_PRX = 1
