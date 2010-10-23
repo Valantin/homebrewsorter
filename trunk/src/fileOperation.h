@@ -16,7 +16,8 @@ struct categories{
     struct ScePspDateTime dateModify;
     char dateForSort[21];
 };
-
+int getHBCATList(struct homebrew HBlist[], struct homebrew *HBCATlist, int HBfound);
+int getCATList(struct categories *CAT);
 int getHBList(struct homebrew *HBlist);
 int moveHBup(int index, struct homebrew *HBlist);
 int moveHBdown(int index, struct homebrew *HBlist);

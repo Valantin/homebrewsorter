@@ -10,7 +10,8 @@
 /* Get extension of a file:*/
 
 static short int CATfound=0;
-static struct categories CATlist[MAX_CAT];
+static short int HBCATfound=0;
+static struct categories CATlist[MAX_CAT], CAT_nodup[MAX_CAT];
 
 /** Controlla che ci sia Un eboot.pbp
     \param *path
@@ -45,10 +46,10 @@ void getExtension(char *fileName, char *extension, int extMaxLength){
     }
 }
 
-int check(struct homebrew *HBlist, char* dir,int HBfound){
+static char cur_cat[262] = "Uncategorized";
+int check(struct homebrew *HBlist, char* dir, int HBfound){
     static SceIoDirent oneDir;
     char fullName[262];
-	char cur_cat[262];
     SceIoStat stats;
     int oDir = sceIoDopen(dir);
     if (oDir < 0){
@@ -93,6 +94,7 @@ int check(struct homebrew *HBlist, char* dir,int HBfound){
             if (!stricmp(checkCAT_, "CAT_")) {
                 sceIoGetstat(fullName, &stats);
                 strcpy(CATlist[CATfound].name, oneDir.d_name+4);
+                printf("%s\n",CATlist[CATfound].name);
 				strcpy(cur_cat, CATlist[CATfound].name);
                 strcpy(CATlist[CATfound].path, fullName);
                 CATlist[CATfound].dateModify = stats.st_mtime;
@@ -122,6 +124,7 @@ int check(struct homebrew *HBlist, char* dir,int HBfound){
                 HBlist[HBfound].dateModify = stats.st_mtime;
                 sprintf(HBlist[HBfound].dateForSort, "%4.4i%2.2i%2.2i%2.2i%2.2i%2.2i%6.6i", stats.st_mtime.year, stats.st_mtime.month, stats.st_mtime.day, stats.st_mtime.hour, stats.st_mtime.minute, stats.st_mtime.second, stats.st_mtime.microsecond);
                 HBlist[HBfound].type=1;
+                strcpy(HBlist[HBfound].category, cur_cat);
                 HBfound++;
             }
         }
@@ -145,6 +148,77 @@ int getCATList(struct categories *CAT){
         CAT[i]=CATlist[i];
     }
     return CATfound;
+}
+
+void noDupCATList(){
+    HBCATfound = CATfound;
+    int i = 0, j = 1, k = 1;
+    while(i < CATfound){
+        strcpy(CAT_nodup[i].name,CATlist[i].name);
+        strcpy(CAT_nodup[i].path,CATlist[i].path);
+        strcpy(CAT_nodup[i].dateForSort,CATlist[i].dateForSort);
+        CAT_nodup[i].dateModify = CATlist[i].dateModify;
+        ++i;
+    }
+	i = 0;
+    while(i < HBCATfound){
+	    printf("%d\n",HBCATfound);
+        while(j < HBCATfound){
+			    printf("%s %s\n",CAT_nodup[i].name,CAT_nodup[j].name);
+            if(!strcmp(CAT_nodup[i].name,CAT_nodup[j].name)){
+                k = j;
+                while( k < HBCATfound-1 ){
+				    strcpy(CAT_nodup[k].name,CAT_nodup[k+1].name);
+				    strcpy(CAT_nodup[k].path,CAT_nodup[k+1].path);
+				    strcpy(CAT_nodup[k].dateForSort,CAT_nodup[k+1].dateForSort);
+					CAT_nodup[k].dateModify = CAT_nodup[k].dateModify;
+                    ++k;
+                }
+                --HBCATfound;
+            }
+            ++j;
+        }
+        ++i;
+    }
+	strcpy(CAT_nodup[i].name,"Uncategorized");
+	HBCATfound++;
+}
+int getHBCATList(struct homebrew HBlist[], struct homebrew *HBCATlist, int HBfound){
+    noDupCATList();
+    int h = 0;
+	while( h < HBCATfound){
+		printf("%s\n",CAT_nodup[h].name);
+		h++;
+	}
+    printf("%d\n",HBCATfound);
+    int k = 0;
+    int j = 1;
+    int i = 0;
+	strcpy(HBCATlist[0].name, CAT_nodup[0].name);
+    HBCATlist[0].type = 2;
+	while(k < HBCATfound){
+        while(i < HBfound){
+	        printf("k %d - j %d - i %d\n",k, j, i);
+			printf("- %s - %s -\n",HBlist[i].category,CAT_nodup[k].name);
+            if(!strcmp(HBlist[i].category,CAT_nodup[k].name)){
+                printf("same cat\n");
+				strcpy(HBCATlist[j].name,HBlist[i].name);
+				strcpy(HBCATlist[j].path,HBlist[i].path);
+				strcpy(HBCATlist[j].category,HBlist[i].category);
+				strcpy(HBCATlist[j].dateForSort,HBlist[i].dateForSort);
+				HBCATlist[j].type = HBlist[i].type;
+                HBCATlist[j].dateModify = HBlist[i].dateModify;
+                ++j;
+            }
+            ++i;
+        }
+        ++k;
+		strcpy(HBCATlist[j].name, CAT_nodup[k].name);
+        HBCATlist[j].type = 2;
+		++j;
+		i = 0;
+    }
+	return j-1;
 }
 
 /* Get homebrew list: */

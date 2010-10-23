@@ -15,10 +15,11 @@ PSP_HEAP_SIZE_KB(12*1024);
 
 /* Globals: */
 int runningFlag = 1;
-struct homebrew HBlist[MAX_HB];
+struct homebrew HBlist[MAX_HB], HBCATlist[MAX_HB];
 int HBcount = 0;
 struct categories CATlist[MAX_CAT];
 int CATcount = 0;
+int HBCATcount = 0;
 OSL_IMAGE *bkg,*startb,*cross,*circle,*folder,*iso,*icon0,*R,*L;
 OSL_FONT *pgfFont;
 
@@ -85,16 +86,20 @@ void getIcon0(char* filename){
 
 /*  Main menu: */
 int mainMenu(){
-	int mode = 0;//0 for hb, 1 for CAT
+	int mode = 0;//0 for hb, 1 for CAT, 2 hybrid
     int skip = 0;
     int start = 27;
-    int first = 0, catFirst =0, hbFirst =0;
+    int first = 0,
+        catFirst = 0,
+        hbFirst = 0,
+        hybridFirst = 0;
     int total = HBcount;
     int visible = 13;
     int selected = 0,
-		catSelected=0,
-		hbSelected=0,
-		oldSelected=-1;
+		catSelected = 0,
+		hbSelected = 0,
+		oldSelected = -1,
+		hybridSelected = 0;
     int i = 0;
     int flag=0;
     int enable = 1;
@@ -108,7 +113,7 @@ int mainMenu(){
 			oslDrawImageXY(cross,302,35);
 			oslDrawString(335,35,"Select/Release");
 			oslDrawImageXY(circle,302,60);
-			if(mode){
+			if( mode == 1){
 				oslIntraFontSetStyle(pgfFont, 0.5, RGBA(255,255,255,100), RGBA(0,0,0,0), INTRAFONT_ALIGN_LEFT);
 				oslDrawString(335,60,"Hide/Show icon0");
                 oslIntraFontSetStyle(pgfFont, 0.5, RGBA(255,255,255,255), RGBA(0,0,0,0), INTRAFONT_ALIGN_LEFT);
@@ -122,28 +127,43 @@ int mainMenu(){
 			oslDrawString(355, 122, "Change view");
 			if(mode == 0){
 				oslDrawString(355, 135, "HomeBrew");
-			} else if (mode ==1){
+			} else if (mode == 1){
 				oslDrawString(355, 135, "Categories");
-			}
+			} else if (mode == 2){
+                oslDrawString(355, 135, "Hybrid");
+            }
 			oslDrawImageXY(R,452,122);
             //Draw menu:
             for (i=first; i<=first+visible; i++){
                 if (i == selected){
                     oslIntraFontSetStyle(pgfFont, 0.5, RGBA(20,20,20,255), RGBA(255,255,255,200), INTRAFONT_ALIGN_LEFT);
                     oslSetFont(pgfFont);
-                    if(enable && !HBlist[i].type && !mode){
-                        if(oldSelected != selected){
-                            if(icon0!=NULL){
-                                oslDeleteImage(icon0);
+                    if(mode == 0){
+                        if(enable && HBlist[i].type == 0){
+                            if(oldSelected != selected){
+                                if(icon0!=NULL){
+                                    oslDeleteImage(icon0);
+                                }
+                                oldSelected = selected;
+                                getIcon0(HBlist[i].path);
                             }
-                            oldSelected = selected;
-                        getIcon0(HBlist[i].path);
+                            if(icon0!=NULL)
+                                oslDrawImageXY(icon0, 312,168);
                         }
-                        if(icon0!=NULL)
-                            //oslDrawImageXY(icon0, 315,150);
-							oslDrawImageXY(icon0, 312,168);
+                    } else if(mode == 2){
+                        if(enable && HBCATlist[i].type == 0){
+                            if(oldSelected != selected){
+                                if(icon0!=NULL){
+                                    oslDeleteImage(icon0);
+                                }
+                                oldSelected = selected;
+                                getIcon0(HBCATlist[i].path);
+                            }
+                            if(icon0!=NULL)
+                                oslDrawImageXY(icon0, 312,168);
+                        }
                     }
-                }else{
+                } else {
                     oslIntraFontSetStyle(pgfFont, 0.5, RGBA(255,255,255,255), RGBA(0,0,0,0), INTRAFONT_ALIGN_LEFT);
                     oslSetFont(pgfFont);
                 }
@@ -157,7 +177,18 @@ int mainMenu(){
 					} else if(mode == 1){//CAT
 						oslDrawImageXY(folder,12,start +(i - first)*oslGetImageHeight(folder));
 						oslDrawString(15+oslGetImageWidth(folder),start +(i - first)*oslGetImageHeight(folder), CATlist[i].name);
-					}
+					} else if(mode == 2){//Hybrid
+                        if(HBCATlist[i].type == 0){
+							oslDrawImageXY(folder,24,start +(i - first)*oslGetImageHeight(folder));
+						    oslDrawString(27+oslGetImageWidth(folder),start +(i - first)*oslGetImageHeight(folder), HBCATlist[i].name);
+                        } else if(HBCATlist[i].type == 2){
+                            oslDrawImageXY(folder,12,start +(i - first)*oslGetImageHeight(folder));
+						    oslDrawString(15+oslGetImageWidth(folder),start +(i - first)*oslGetImageHeight(folder), HBCATlist[i].name);
+						} else {
+							oslDrawImageXY(iso,24,start +(i - first)*oslGetImageHeight(folder));
+						    oslDrawString(27+oslGetImageWidth(folder),start +(i - first)*oslGetImageHeight(folder), HBCATlist[i].name);
+                        }
+                    }
                 }
             }
             oslIntraFontSetStyle(pgfFont, 0.5, RGBA(255,255,255,255), RGBA(0,0,0,0), INTRAFONT_ALIGN_LEFT);
@@ -217,31 +248,65 @@ int mainMenu(){
 			flag ^= 1;
         } else if (osl_keys->released.circle){
 			//if(enable) enable =0; else enable =1;
-			if(mode == 0)
+			if(mode == 0 || mode == 2)
 				enable ^= 1;
-        } else if (osl_keys->released.L || osl_keys->released.R){
+        } else if (osl_keys->released.R){
             //mode ^=1;
-			if(mode == 0){
-				mode=1;
-				hbSelected = selected;
-				selected = catSelected;
-				total = CATcount;
-				hbFirst = first;
-				first = catFirst;
-			} else if(mode == 1){
-				mode=0;
-				catSelected = selected;
-				selected = hbSelected;
-				total = HBcount;
-				catFirst = first;
-				first = hbFirst;
-			}
+            if(mode == 0){
+                mode=1;
+                hbSelected = selected;
+                selected = catSelected;
+                total = CATcount;
+                hbFirst = first;
+                first = catFirst;
+            } else if(mode == 1){
+                mode=2;
+                catSelected = selected;
+                selected = hybridSelected;
+                total = HBCATcount;
+                catFirst = first;
+                first = hybridFirst;
+            } else if(mode == 2){
+                mode=0;
+                hybridSelected = selected;
+                selected = hbSelected;
+                total = HBcount;
+                hybridFirst = first;
+                first = hbFirst;
+            }
+        } else if(osl_keys->released.L){
+            if(mode == 0){
+                mode=2;
+                hbSelected = selected;
+                selected = hybridSelected;
+                total = HBCATcount;
+                hbFirst = first;
+                first = hybridFirst;
+            } else if(mode == 1){
+                mode=0;
+                catSelected = selected;
+                selected = hbSelected;
+                total = HBcount;
+                catFirst = first;
+                first = hbFirst;
+            } else if(mode == 2){
+                mode=1;
+                hybridSelected = selected;
+                selected = catSelected;
+                total = CATcount;
+                hybridFirst = first;
+                first = catFirst;
+            }
+        } else if (osl_keys->released.triangle){
+            //open category to modify HB in category
         } else if (osl_keys->released.start){
             //saveList();
 			if(mode == 0)
 				saveHBlist(HBlist, HBcount);
 			else if(mode == 1)
 				saveCATlist(CATlist, CATcount);
+            else if(mode == 2)
+				saveHBlist(HBlist, HBcount);
         }
     }
     return 0;
@@ -290,6 +355,7 @@ int main(){
     tzset();
     HBcount = getHBList(HBlist);
     CATcount = getCATList(CATlist);
+	HBCATcount = getHBCATList(HBlist,HBCATlist,HBcount);
 	printf("ci arrivo?\n");
     //while(!osl_quit)
 		mainMenu();
