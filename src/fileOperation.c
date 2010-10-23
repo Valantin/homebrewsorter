@@ -1,3 +1,21 @@
+/*
+    PSP HomeBrewSorter GUI
+        Copyright (C) valantin <valantin89@gmail.com>
+
+        This program is free software: you can redistribute it and/or modify
+        it under the terms of the GNU General Public License as published by
+        the Free Software Foundation, either version 3 of the License, or
+        (at your option) any later version.
+
+        This program is distributed in the hope that it will be useful,
+        but WITHOUT ANY WARRANTY; without even the implied warranty of
+        MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+        GNU General Public License for more details.
+
+        You should have received a copy of the GNU General Public License
+        along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include <pspsdk.h>
 #include <pspiofilemgr.h>
 #include <string.h>
@@ -6,6 +24,7 @@
 #include <ctype.h>
 #include <time.h>
 #include "fileOperation.h"
+#include "dirOperation.h"
 
 /* Get extension of a file:*/
 
@@ -28,7 +47,7 @@ int isHomeBrew(char *path) {
     if (sceIoGetstat(file, &stat) < 0) return 0;
     else return 1;
 }
-
+/*
 void getExtension(char *fileName, char *extension, int extMaxLength){
     int i = 0, j = 0, count = 0;
     for (i = strlen(fileName) - 1; i >= 0; i--){
@@ -44,6 +63,17 @@ void getExtension(char *fileName, char *extension, int extMaxLength){
             return;
         }
     }
+}*/
+
+int getExtension(char *fileName, char *extension, int extMaxLength){
+    if(strncmp(fileName+(strlen(fileName)-extMaxLength-1),".",1)) return -1;
+    strcpy(extension,fileName+(strlen(fileName)-extMaxLength));
+    int i = 0;
+    while(i <extMaxLength){
+        extension[i] = toupper(extension[i]);
+        ++i;
+    }
+    return 0;
 }
 
 static char cur_cat[262] = "Uncategorized";
@@ -70,13 +100,12 @@ int check(struct homebrew *HBlist, char* dir, int HBfound){
             //Directory (HB):
         if (FIO_S_ISDIR(oneDir.d_stat.st_mode)){
             //Check for 1.50 hb:
-			//__SCE__ - %__SCE__ style
-            int j;
+            //__SCE__ - %__SCE__ style
             char check150[8] = "";
             strncpy(check150, oneDir.d_name, 7);
             if (!stricmp(check150, "__SCE__"))
                 continue;
-			//folder - folder% style
+            //folder - folder% style
             int uDir;
             char old_format_style[262];
             strcpy(old_format_style, fullName);
@@ -95,7 +124,7 @@ int check(struct homebrew *HBlist, char* dir, int HBfound){
                 sceIoGetstat(fullName, &stats);
                 strcpy(CATlist[CATfound].name, oneDir.d_name+4);
                 printf("%s\n",CATlist[CATfound].name);
-				strcpy(cur_cat, CATlist[CATfound].name);
+                strcpy(cur_cat, CATlist[CATfound].name);
                 strcpy(CATlist[CATfound].path, fullName);
                 CATlist[CATfound].dateModify = stats.st_mtime;
                 sprintf(CATlist[CATfound].dateForSort, "%4.4i%2.2i%2.2i%2.2i%2.2i%2.2i%6.6i", stats.st_mtime.year, stats.st_mtime.month, stats.st_mtime.day, stats.st_mtime.hour, stats.st_mtime.minute, stats.st_mtime.second, stats.st_mtime.microsecond);
@@ -160,18 +189,18 @@ void noDupCATList(){
         CAT_nodup[i].dateModify = CATlist[i].dateModify;
         ++i;
     }
-	i = 0;
+    i = 0;
     while(i < HBCATfound){
-	    printf("%d\n",HBCATfound);
+        printf("%d\n",HBCATfound);
         while(j < HBCATfound){
-			    printf("%s %s\n",CAT_nodup[i].name,CAT_nodup[j].name);
+                printf("%s %s\n",CAT_nodup[i].name,CAT_nodup[j].name);
             if(!strcmp(CAT_nodup[i].name,CAT_nodup[j].name)){
                 k = j;
                 while( k < HBCATfound-1 ){
-				    strcpy(CAT_nodup[k].name,CAT_nodup[k+1].name);
-				    strcpy(CAT_nodup[k].path,CAT_nodup[k+1].path);
-				    strcpy(CAT_nodup[k].dateForSort,CAT_nodup[k+1].dateForSort);
-					CAT_nodup[k].dateModify = CAT_nodup[k].dateModify;
+                    strcpy(CAT_nodup[k].name,CAT_nodup[k+1].name);
+                    strcpy(CAT_nodup[k].path,CAT_nodup[k+1].path);
+                    strcpy(CAT_nodup[k].dateForSort,CAT_nodup[k+1].dateForSort);
+                    CAT_nodup[k].dateModify = CAT_nodup[k].dateModify;
                     ++k;
                 }
                 --HBCATfound;
@@ -180,45 +209,47 @@ void noDupCATList(){
         }
         ++i;
     }
-	strcpy(CAT_nodup[i].name,"Uncategorized");
-	HBCATfound++;
+    strcpy(CAT_nodup[i].name,"Uncategorized");
+    HBCATfound++;
 }
-int getHBCATList(struct homebrew HBlist[], struct homebrew *HBCATlist, int HBfound){
+
+int getHBCATList(struct homebrew HBlist[], struct hbcategories *HBCATlist, int HBfound){
     noDupCATList();
-    int h = 0;
-	while( h < HBCATfound){
-		printf("%s\n",CAT_nodup[h].name);
-		h++;
-	}
-    printf("%d\n",HBCATfound);
+    /*int h = 0;
+    while( h < HBCATfound){
+        printf("%s\n",CAT_nodup[h].name);
+        h++;
+    }
+    printf("%d\n",HBCATfound);*/
     int k = 0;
     int j = 1;
     int i = 0;
-	strcpy(HBCATlist[0].name, CAT_nodup[0].name);
+    strcpy(HBCATlist[0].name, CAT_nodup[0].name);
     HBCATlist[0].type = 2;
-	while(k < HBCATfound){
+    while(k < HBCATfound){
         while(i < HBfound){
-	        printf("k %d - j %d - i %d\n",k, j, i);
-			printf("- %s - %s -\n",HBlist[i].category,CAT_nodup[k].name);
+            printf("k %d - j %d - i %d\n",k, j, i);
+            printf("- %s - %s -\n",HBlist[i].category,CAT_nodup[k].name);
             if(!strcmp(HBlist[i].category,CAT_nodup[k].name)){
                 printf("same cat\n");
-				strcpy(HBCATlist[j].name,HBlist[i].name);
-				strcpy(HBCATlist[j].path,HBlist[i].path);
-				strcpy(HBCATlist[j].category,HBlist[i].category);
-				strcpy(HBCATlist[j].dateForSort,HBlist[i].dateForSort);
-				HBCATlist[j].type = HBlist[i].type;
+                strcpy(HBCATlist[j].name,HBlist[i].name);
+                strcpy(HBCATlist[j].path,HBlist[i].path);
+                strcpy(HBCATlist[j].category,HBlist[i].category);
+                strcpy(HBCATlist[j].oldcategory,HBlist[i].category);
+                strcpy(HBCATlist[j].dateForSort,HBlist[i].dateForSort);
+                HBCATlist[j].type = HBlist[i].type;
                 HBCATlist[j].dateModify = HBlist[i].dateModify;
                 ++j;
             }
             ++i;
         }
         ++k;
-		strcpy(HBCATlist[j].name, CAT_nodup[k].name);
+        strcpy(HBCATlist[j].name, CAT_nodup[k].name);
         HBCATlist[j].type = 2;
-		++j;
-		i = 0;
+        ++j;
+        i = 0;
     }
-	return j-1;
+    return j-1;
 }
 
 /* Get homebrew list: */
@@ -281,7 +312,7 @@ int moveHBdown(int index, struct homebrew *HBlist){
 
 int saveHBlist(struct homebrew *HBlist, int HBcount){
     int i = 0;
-	
+
     struct tm * ptm;
     time_t mytime;
     time(&mytime);
@@ -381,3 +412,83 @@ int saveCATlist(struct categories *CATlist, int CATcount){
     }
     return 0;
 }
+
+int moveHBCATup(int index, struct hbcategories *HBCATlist){
+    if (index > 0){
+        if(HBCATlist[index].type != 2){
+            if(HBCATlist[index - 1].type == 2) {
+                strcpy(HBCATlist[index].category,HBCATlist[index - 1].name);
+            }
+            struct hbcategories tmp = HBCATlist[index];
+            HBCATlist[index] = HBCATlist[index - 1];
+            HBCATlist[index - 1] = tmp;
+        } else return -1;
+    }
+    return 0;
+}
+
+/* Move HB down: */
+int moveHBCATdown(int index, struct hbcategories *HBCATlist){
+    if(HBCATlist[index].type != 2){
+        if(HBCATlist[index + 1].type == 2) {
+            strcpy(HBCATlist[index].category,HBCATlist[index + 1].name);
+        }
+        struct hbcategories tmp = HBCATlist[index];
+        HBCATlist[index] = HBCATlist[index + 1];
+        HBCATlist[index + 1] = tmp;
+    } else return -1;
+    return 0;
+}
+
+/* Save HB list: */
+
+int saveHBCATlist(struct hbcategories *HBCATlist, int HBCATcount){
+    int i = 0;
+
+    struct tm * ptm;
+    time_t mytime;
+    time(&mytime);
+    ptm = localtime(&mytime);
+
+    SceIoStat stat;
+    ScePspDateTime start;
+
+    start.year = ptm->tm_year + 1900;
+    start.month = ptm->tm_mon + 1;
+    start.day = ptm->tm_mday;
+    start.hour = ptm->tm_hour;
+    start.minute = ptm->tm_min;
+    start.second = ptm->tm_sec;
+    start.microsecond = 00;
+
+    memset(&stat, 0, sizeof(SceIoStat));
+    stat.st_mode = 0777;
+
+    for (i=HBCATcount - 1; i>=0; i--){
+        stat.st_mtime = start;
+        stat.st_ctime = start;
+        sceIoChstat(HBCATlist[i].path, &stat, 0x1);
+        sceIoChstat(HBCATlist[i].path, &stat, 0x20);
+        sceIoChstat(HBCATlist[i].path, &stat, 0x8);
+        if (start.second < 50){
+            start.second += 10;
+        }else{
+            if (start.minute < 59)
+                start.minute++;
+            else{
+                start.hour++;
+                start.minute = 00;
+            }
+            start.second = 00;
+        }
+    }
+    return 0;
+}
+
+/*int saveHBCATlist(struct hbcategories *HBCATlist, int HBCATcount){
+    //char oldPath[262], newPath[262];
+    //strcpy(oldPath,HBCATlist[4].path);
+    //strcpy(newPath,);
+    sceIoMvdir("ms0:/PSP/GAME/CAT_Emulatori/pspTwitter", "ms0:/PSP/GAME/CAT_TEST/pspTwitter_moved");
+    return 0;
+}*/
