@@ -65,7 +65,21 @@ void getExtension(char *fileName, char *extension, int extMaxLength){
     }
 }*/
 
-int getExtension(char *fileName, char *extension, int extMaxLength){
+int getExtension(char *fileName, char *extension, int extMaxLength) {
+    char *extpos;
+    extpos = strrchr(fileName, '.');
+    extpos++;
+    if(strlen(extpos) > extMaxLength){ free(extpos); return -1; }
+    int i = 0;
+    while(i < strlen(extpos)){
+        extension[i] = toupper(extpos[i]);
+        ++i;
+    }
+    free(extpos);
+    return 0;
+}
+
+/*int getExtension(char *fileName, char *extension, int extMaxLength){
     if(strncmp(fileName+(strlen(fileName)-extMaxLength-1),".",1)) return -1;
     strcpy(extension,fileName+(strlen(fileName)-extMaxLength));
     int i = 0;
@@ -74,7 +88,7 @@ int getExtension(char *fileName, char *extension, int extMaxLength){
         ++i;
     }
     return 0;
-}
+}*/
 
 static char cur_cat[262] = "Uncategorized";
 int check(struct homebrew *HBlist, char* dir, int HBfound){
@@ -254,6 +268,10 @@ int getHBCATList(struct homebrew HBlist[], struct hbcategories *HBCATlist, int H
 
 /* Get homebrew list: */
 int getHBList(struct homebrew *HBlist){
+    memset(CATlist, 0, sizeof(CATlist));
+    memset(CAT_nodup, 0, sizeof(CAT_nodup));
+    CATfound = 0;
+    HBCATfound=0;
     int dirScanned = 0,
     dirToScanNumber = 0,
     HBfound = 0;
@@ -417,11 +435,12 @@ int moveHBCATup(int index, struct hbcategories *HBCATlist){
     if (index > 0){
         if(HBCATlist[index].type != 2){
             if(HBCATlist[index - 1].type == 2) {
-                strcpy(HBCATlist[index].category,HBCATlist[index - 1].name);
+                strcpy(HBCATlist[index].category,HBCATlist[index - 2].category); //prendo la categoria superiore altrimenti resta la stessa.
             }
-            struct hbcategories tmp = HBCATlist[index];
-            HBCATlist[index] = HBCATlist[index - 1];
-            HBCATlist[index - 1] = tmp;
+            printf("%s\n",HBCATlist[index].category);
+            struct hbcategories tmp = HBCATlist[index - 1];
+            HBCATlist[index - 1] = HBCATlist[index];
+            HBCATlist[index] = tmp;
         } else return -1;
     }
     return 0;
@@ -433,6 +452,7 @@ int moveHBCATdown(int index, struct hbcategories *HBCATlist){
         if(HBCATlist[index + 1].type == 2) {
             strcpy(HBCATlist[index].category,HBCATlist[index + 1].name);
         }
+        printf("%s\n",HBCATlist[index].category);
         struct hbcategories tmp = HBCATlist[index];
         HBCATlist[index] = HBCATlist[index + 1];
         HBCATlist[index + 1] = tmp;
@@ -444,7 +464,8 @@ int moveHBCATdown(int index, struct hbcategories *HBCATlist){
 
 int saveHBCATlist(struct hbcategories *HBCATlist, int HBCATcount){
     int i = 0;
-
+    char *newpath;
+    char oldpath[262];
     struct tm * ptm;
     time_t mytime;
     time(&mytime);
@@ -467,6 +488,30 @@ int saveHBCATlist(struct hbcategories *HBCATlist, int HBCATcount){
     for (i=HBCATcount - 1; i>=0; i--){
         stat.st_mtime = start;
         stat.st_ctime = start;
+        if(strcmp(HBCATlist[i].category, HBCATlist[i].oldcategory) != 0) {
+            strcpy(oldpath,HBCATlist[i].path);
+            newpath = strrchr(HBCATlist[i].path, '/');
+            int ln = strlen(HBCATlist[i].path) - strlen(newpath);
+            char *path = calloc(ln, sizeof(char));
+            strncpy(path,HBCATlist[i].path, ln);
+            //free(newpath);
+            if(strcmp(HBCATlist[i].oldcategory,"Uncategorized") != 0) {
+                newpath = strrchr(path, '/');
+                ln = strlen(path) - strlen(newpath);
+                //free(newpath);
+                //free(path);
+                path = calloc(ln, sizeof(char));
+                strncpy(path,HBCATlist[i].path, ln);
+            }
+            if(strcmp(HBCATlist[i].category,"Uncategorized") != 0)
+                 sprintf(HBCATlist[i].path,"%s/CAT_%s/%s",path,HBCATlist[i].category,HBCATlist[i].name);
+            else
+                 sprintf(HBCATlist[i].path,"%s/%s",path,HBCATlist[i].name);
+            sceIoMvdir(oldpath,HBCATlist[i].path);
+            strcpy(HBCATlist[i].oldcategory,HBCATlist[i].category);
+            //free(path);
+            printf("from %s to %s\n",oldpath,HBCATlist[i].path);
+        }
         sceIoChstat(HBCATlist[i].path, &stat, 0x1);
         sceIoChstat(HBCATlist[i].path, &stat, 0x20);
         sceIoChstat(HBCATlist[i].path, &stat, 0x8);
@@ -481,6 +526,18 @@ int saveHBCATlist(struct hbcategories *HBCATlist, int HBCATcount){
             }
             start.second = 00;
         }
+        if(i > 0 && strcmp(HBCATlist[i].category, HBCATlist[i - 1].category) != 0) {
+            start.year = ptm->tm_year + 1900;
+            start.month = ptm->tm_mon + 1;
+            start.day = ptm->tm_mday;
+            start.hour = ptm->tm_hour;
+            start.minute = ptm->tm_min;
+            start.second = ptm->tm_sec;
+            start.microsecond = 00;
+
+            memset(&stat, 0, sizeof(SceIoStat));
+            stat.st_mode = 0777;
+		}
     }
     return 0;
 }
