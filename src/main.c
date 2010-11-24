@@ -24,7 +24,7 @@
 #include "media.h"
 PSP_MODULE_INFO("homebrewSorter", 0, 1, 0);
 PSP_MAIN_THREAD_ATTR(THREAD_ATTR_USER | THREAD_ATTR_VFPU);
-PSP_HEAP_SIZE_KB(12*1024);
+PSP_HEAP_SIZE_KB(3*1024);
 
 #define ANALOG_SENS 80
 #define VERSION "1.2.1"
@@ -39,6 +39,15 @@ int CATcount = 0;
 int HBCATcount = 0;
 OSL_IMAGE *bkg,*startb,*cross,*circle,*folder,*iso,*icon0,*R,*L;
 OSL_FONT *pgfFont;
+
+void updateList(){
+    memset(HBlist, 0 , sizeof(HBlist));
+    HBcount = getHBList(HBlist);
+    memset(CATlist, 0 , sizeof(CATlist));
+    CATcount = getCATList(CATlist);
+    memset(HBCATlist, 0 , sizeof(HBCATlist));
+    HBCATcount = getHBCATList(HBlist,HBCATlist,HBcount);
+}
 
 /* Save list order: */
 /*int saveList(){
@@ -59,6 +68,7 @@ OSL_FONT *pgfFont;
 /* Draw toolbars: */
 char t[100];
 char hbfound[100];
+
 void drawToolbars(){
     oslDrawFillRect(0,0,480,15,RGBA(0,0,0,170));
     oslDrawString(5,0,"HomeBrew Sorter by Sakya");
@@ -72,6 +82,7 @@ void drawToolbars(){
     sprintf(t,"%2.2d/%2.2d/%4.4d %2.2d:%2.2d",ptm->tm_mday, ptm->tm_mon + 1, ptm->tm_year + 1900, ptm->tm_hour,ptm->tm_min);
     oslDrawString(360,0,t);
 }
+
 void getIcon0(char* filename){
     //unsigned char _header[40];
     int icon0Offset, icon1Offset;
@@ -276,7 +287,7 @@ int mainMenu(){
                             if (--selected < first) first--;
                         } else {
                             flag ^= 1;
-                            if (selected > 0){
+                            if (selected > 1){
                                 if (--selected < first)
                                     first--;
                             }
@@ -348,6 +359,7 @@ int mainMenu(){
                 saveCATlist(CATlist, CATcount);
             else if(mode == 2)
                 saveHBCATlist(HBCATlist, HBCATcount);
+            updateList();
         }
     }
     return 0;
@@ -393,9 +405,7 @@ int initOSLib(){
 int main(){
     initOSLib();
     tzset();
-    HBcount = getHBList(HBlist);
-    CATcount = getCATList(CATlist);
-    HBCATcount = getHBCATList(HBlist,HBCATlist,HBcount);
+    updateList();
     //while(!osl_quit)
         mainMenu();
     oslEndGfx();
